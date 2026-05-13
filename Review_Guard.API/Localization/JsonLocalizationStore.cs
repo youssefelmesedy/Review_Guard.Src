@@ -64,18 +64,24 @@ public sealed class JsonLocalizationStore
     private IReadOnlyDictionary<string, string> LoadCultureCore(string cultureName)
     {
         var filePath = Path.Combine(_resourcesPath, $"{cultureName}.json");
+
         if (!File.Exists(filePath))
+            return new Dictionary<string, string>();
+
+        try
         {
-            _logger.LogWarning("Localization file not found: {FilePath}", filePath);
-            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            using var stream = File.OpenRead(filePath);
+            using var document = JsonDocument.Parse(stream);
+
+            var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            FlattenJsonObject(document.RootElement, null, map);
+            return map;
         }
-
-        using var stream = File.OpenRead(filePath);
-        using var document = JsonDocument.Parse(stream);
-
-        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        FlattenJsonObject(document.RootElement, prefix: null, map);
-        return map;
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Invalid localization JSON: {FilePath}", filePath);
+            return new Dictionary<string, string>();
+        }
     }
 
     private static string[] BuildCultureFallbackChain(CultureInfo culture)

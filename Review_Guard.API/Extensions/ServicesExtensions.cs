@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging.Console;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Review_Guard.API.Localization;
+using Review_Guard.API.Logging;
 using System.Globalization;
 using System.Text;
 
@@ -70,6 +72,7 @@ public static class ServicesExtensions
                 ValidIssuer = jwtSection["Issuer"],
                 ValidateAudience = true,
                 ValidAudience = jwtSection["Audience"],
+                ValidateLifetime = true,
                 ClockSkew = TimeSpan.Zero
             };
 
@@ -138,7 +141,43 @@ public static class ServicesExtensions
                 opt.IncludeXmlComments(xmlPath);
         });
 
+        // ─────────────────────────────────────────────────────────
+        // CORS Allowing Frontend (for development purposes, adjust for production)
+        // ─────────────────────────────────────────────────────────
+        services.AddCors(options =>
+        {
+            options.AddPolicy("AllowFrontend", policy =>
+            {
+                policy
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowAnyOrigin();
+            });
+        });
+
         return services;
     }
 
+
+
+}
+// Extension method for configuring custom logging
+public static class LoggingExtensions
+{
+    public static ILoggingBuilder AddCustomLogging(
+        this ILoggingBuilder builder)
+    {
+        builder.ClearProviders();
+
+        builder.AddConsoleFormatter<
+            ColoredConsoleFormatter,
+            ConsoleFormatterOptions>();
+
+        builder.AddConsole(options =>
+        {
+            options.FormatterName = "colored";
+        });
+
+        return builder;
+    }
 }
